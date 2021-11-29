@@ -1,0 +1,329 @@
+---
+title: "Tidyverse Short Tutorial"
+author: "Robin Choudhury and Neil McRoberts"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_collapsed: true
+    toc_depth: 6
+    number_sections: true
+---
+
+## Install and Load Tidyverse
+
+```{r setup}
+knitr::opts_chunk$set(echo = TRUE)
+# install.packages("tidyverse") #in case you haven't installed it
+library(tidyverse)
+```
+
+## Tidyverse: a Short Introduction
+
+Tidyverse is a cluster of related packages developed by Hadley Wickam and collaborators meant to make data analysis and visualization easier in R. I (RAC) am NOT an expert on Tidyverse, although I have used it basically daily since 2016-ish. This tutorial is meant to dip your toe into the Tidyverse, not make you a master. The packages inside of Tidyverse are constantly updating, with old functions being deprecated and new functions being added. Some of the lessons that I give here might be out of date in a few years (I am writing this on 2021-11-23). Some of the stuff here is highly opinionated, and Dr. McRoberts may disagree with bits and pieces of this document, but it's meant to help you as you start your journey.
+
+
+![*An illustration of how the various Tidyverse packages relate to one another and are used for data analysis.*](https://oliviergimenez.github.io/intro_tidyverse/assets/img/01_tidyverse_data_science.png)
+
+
+
+The packages in Tidyverse helped to solve many issues and gaps that came up with the standard installation of R (which I will be calling Base R). Loading in Excel/CSV files, re-arranging data, formatting dates, creating new variables, and graphing were all possible in Base R, but are (*arguably*) easier using Tidyverse. 
+
+
+### Iris Dataset
+
+We will be using the iris dataset to explore how to use tidyverse packages. The iris dataset is relatively small (150 x 5) and can be useful for many different purposes, including multivariate statistics, correlation, and data visualization. It describes the petal and sepal lengths and widths for three different iris species (*Iris setosa*, *I. versicolor*, and *I. virginica*).
+
+![*Photgraphs of three different iris species used in the iris dataset.*](https://miro.medium.com/max/1000/0*oUoXifiKu3tT5REt.png)
+
+
+#### Load in the Iris Dataset
+Load in the Iris dataset and create a dummy variable for the date so that we can play around with it later
+
+```{r iris}
+#create tibble of iris
+df <- as_tibble(iris) %>%
+  mutate(date = rep(c("2021-11-23", "11/23/21", "11/23/2021"), len = 150))
+```
+
+
+#### View the Top of the Dataset
+
+The function **head** allows you to look at the top of a dataset, including the column names and the first few lines of data.
+
+```{r head iris}
+head(df)
+
+```
+
+#### Saving Iris as a CSV
+
+Let's save this dataset as a comma separated value (CSV) file so that we can import it later.
+
+```{r iris save csv}
+#write_csv(x = df,file = "data/iris.csv" )
+```
+
+
+## Importing Data
+
+Importing data used to be one of the most frustrating parts of using R. Previously (circa ~2013) I would use read.csv(file.choose()) and manually pick out my dataset, but this made it so that if I didn't specify a path then anyone using the code later (or even really me) wouldn't know where the data was. The use of projects in RStudio allows users to keep all relevant files, figures, manuscripts in one place, making it easier to share code.
+
+We just saved our Iris dataset as a csv file, now lets load it back in. We will be making this dataset a *tibble*; tibbles are sometimes more efficient to use in analyses. They are described as:
+
+>"Tibbles are data.frames that are lazy and surly: they do less (i.e. they don’t change variable names or types, and don’t do partial matching) and complain more (e.g. when a variable does not exist)." (https://tibble.tidyverse.org)
+
+```{r load csv}
+
+#df = read_csv("data/iris.csv") %>%
+#  as_tibble()
+
+```
+
+#### But the Dates are All Wrong...
+If you look at the date column, you'll see that it is a character value, not recognized as a date value. R won't know how to parse the dates that you put in, especially if they are of mixed types (e.g. - MDY, YMD, DMY, etc). You can fix this using the parse_date_time function in the Lubridate package in R, and specifying the possible date types in your dataset. Date types are specified in the form of mdy for "month, day, year". This transforms the date column from a character type to a POSIXct type, which is parsable by R as a date value.
+
+
+```{r change date}
+df = df %>% 
+  mutate(date = lubridate::parse_date_time(date, orders = c("mdy", "Ymd")))
+
+```
+
+#### Ceci N'est Pas Une Pipe...
+
+In many programming languages, you can pass the values of one function to another function without needing to save it as an intermediate object in between. This saves you space on your computer and makes life easier down the line. This passing function is called a **pipe**, and is represented in R code as **%>%**. If you've been watching the code I've been using above, you may have noticed it. In the above function, we are passing the tibble data.frame **df** through a pipe to create a new function using **mutate**, and then using **lubridate::parse_date_time** to parse the mixed date formats. The Tidyverse package **magrittr** allows your to use pipes in R; it's a play on the famous Rene Magritte painting "The Treachery of Images".
+
+![*The Treachery of Images by Rene Magritte.*](https://upload.wikimedia.org/wikipedia/en/b/b9/MagrittePipe.jpg)
+
+#### Specifying Which Package to Source Your Functions From
+
+If you want to specify which package you want your function to come from, you can use the **"::"** sign after the name of the package. This is useful if you have a commonly named function (e.g. **filter**) that may exist in multiple packages. This is also useful if you don't want to load in a lot of extra packages at the front end of a codeset, and you only want to pick and choose which functions to select from different packages.
+
+
+
+
+## Data Tidying and Wrangling
+
+We have already explored a bit of data tidying and wrangling with the use of the **lubridate** and **magrittr** packages. Tidyverse is also capable of helping with strings, factors, and other date types.
+
+One of the central and most useful packages in Tidyverse is dplyr, which helps to filter data, select columns to keep or drop, arrange rows, and create new columns using mutate. Let's explore some of these functions.
+
+We do this data wrangling in R because that way we can leave the original data alone. Previously, I would (foolishly) try to do some of this in Excel, but that became hard to track down how I modified different things. This allows you to repeatably modify data so that others can see how you modified your data.
+
+#### Data Filtering
+
+Let's **filter** the iris dataset to only keep the I. versicolor data samples...
+
+```{r filter}
+#Filter for versicolor species
+filter(.data = df, Species == "versicolor")
+```
+
+#### Column Selection and Dropping
+
+You can select or drop columns in R using **select**
+
+```{r select}
+#Drop select columns from the data
+select(.data = df, Species, Petal.Width, Petal.Length)
+```
+
+#### Create New Columns
+
+You can create new columns my using the **mutate** function
+
+```{r mutate}
+#Create a new column
+mutate(.data = df, sepal_area = Sepal.Length * Sepal.Width)
+```
+
+#### Group and Summarize Values 
+
+If you want a summary of some group of values, you can use the **summary** function...
+
+```{r}
+#Group and summarize
+group_by(.data = df, Species) %>% 
+  summarize(mean_sepal_length = mean(Sepal.Length))
+```
+
+#### Pivot Your Data Longer or Wider
+
+You frequently want to change your dataset from long to wide. Imagine if you collected data in an excel file and a few columns were ratings from different plants for the same treatment (e.g. Plant 1: 10%, 15%, 10%, 20%). In this scenario, your data would be called **wide** because the values are spread out. In the Iris dataset, values are **long** when considering species because there is a column for species, but the dataset could be longer if you group the different types of data measurements into one column. We can do that using the **pivot_longer** and **pivot_wider** functions in the **tidyr** package. 
+
+
+```{r pivot}
+iris %>%
+  rowid_to_column() %>% 
+  pivot_longer(-c(rowid, Species), values_to = "measurement") %>%
+  select(-rowid)
+```
+
+## Graphing and Visualizing Data
+
+You should be graphing and visualizing your data as you go. Why? Lord knows that almost everyone I know has had an data input error, where someone meant to create two rows with values 10 and 11, and ended up creating a single value of 1011. If you are on a percent scale that will create chaos! Visualizing your data will allow you to spot data input errors more easily. It will also allow you to formulate some hypotheses for how best to analyze your data. For instance, if you see that there is a relationship between two variables in a graph, you may want to conduct a regression or a correlation. The graph may also help to guide if the regression should be linear or not.
+
+#### Scatterplot
+
+Scatterplots are kind of the go-to way to first visualize your data, especially if you think there is a relationship between two variables. We are going to do this with the r package **ggplot2**. The way that **ggplot2** works is that it adds on layers to existing layers using the **"+"** sign. Each **+** lets ggplot know that you are adding on something else in the next line. Lets compare sepal length and sepal width for the three iris species.
+
+
+```{r scatter plot}
+#Scatterplot
+ggplot(data=df, aes(x = Sepal.Length, y = Sepal.Width))+
+  geom_point(aes(color=Species, shape=Species)) +
+  xlab("Sepal Length") +
+  ylab("Sepal Width") +
+  ggtitle("Sepal Length-Width")
+```
+
+
+
+#### Boxplots
+
+Visualizing with scatterplots helps you to represent the raw data very well, but it doesn't do a good job of showing summary statistics for the data. In recent years, scientists have been moving away from bar plots (see https://thenode.biologists.com/barbarplots/photo/ for a detailed explanation). 
+
+```{r boxplot}
+#Boxplot
+ggplot(data=df, aes(x=Species, y=Sepal.Length)) +
+  geom_boxplot(aes(fill=Species)) +
+  ylab("Sepal Length") +
+  ggtitle("Iris Boxplot")
+```
+
+
+#### Raw and Summarized Data?
+
+Okay, so boxplots can show you summarized data well, but what if you want both? I mentioned earlier that **ggplot** layers on data, so each subsequent layer goes on top of the others. So we can put down the raw dataset (here in the form of a jitterplot, a scatterplot with a little bit of random noise added in) and we made the boxplot a little bit transparent (using the alpha command):
+
+```{r boxplot jitterplot}
+#Boxplot + Jitter plot
+ggplot(data=df, aes(x=Species, y=Sepal.Length)) +
+  geom_jitter(shape = 21, height = 0,aes(fill = Species)) +
+  geom_boxplot(aes(fill=Species), alpha = 0.5) +
+  ylab("Sepal Length") +
+  ggtitle("Iris Boxplot")
+```
+
+
+#### Histograms
+
+Oftentimes, we want to know what the distribution of dataset is. This will give us an idea if we are working with normal data or if we need to use non-parametric statistics to analyze.
+
+
+```{r histogram}
+#Histograms
+ggplot(data=df, aes(x=Sepal.Width)) +
+  geom_histogram(position = "dodge",binwidth=0.2, color="black", aes(fill=Species)) +
+  xlab("Sepal Width") +
+  ylab("Frequency") +
+  ggtitle("Histogram of Sepal Width")
+```
+
+#### Facets of Graphs
+
+We sometimes want to visualize datasets side by side, without having them all intermingled. Imagine if you had collected spore data from multiple sites and wanted to see what was going on at individual sites or years. We can visualize data in this way using facets. Facets can be applied as a wrap (where R will organize them in whatever order you specify in the dataset) or they can be faceted as a grid (for example, by site and year). Lets facet our dataset as a grid based on the species, and keep the different scales free.
+
+
+```{r facets}
+#Faceting
+ggplot(data=df, aes(Sepal.Length, y=Sepal.Width,
+                             color=Species)) +
+  geom_point(aes(shape=Species), size=1.5) +
+  xlab("Sepal Length") +
+  ylab("Sepal Width") +
+  ggtitle("Faceting") +
+  facet_grid(Species~., scales = "free")
+
+```
+
+
+#### Changing the Background and Other Themes
+
+Sometimes you want the background of a graph to be a different color. You can pretty easily change stuff in ggplot, lets look at that:
+
+```{r facets background}
+#Faceting
+ggplot(data=df, aes(Sepal.Length, y=Sepal.Width,
+                             color=Species)) +
+  geom_point(aes(shape=Species), size=1.5) +
+  xlab("Sepal Length") +
+  ylab("Sepal Width") +
+  ggtitle("Faceting") +
+  theme_bw() +
+  facet_grid(Species~., scales = "free")
+
+```
+
+#### Is There a Trend in the Data?
+
+Sometimes you want to see if there is a trend in the data. You can add on a smoothing function to look at that, which defaults to a loess analysis. 
+
+```{r facets background smooth}
+#Faceting
+ggplot(data=df, aes(Sepal.Length, y=Sepal.Width,
+                             color=Species)) +
+  geom_point(aes(shape=Species), size=1.5) +
+  geom_smooth() +
+  xlab("Sepal Length") +
+  ylab("Sepal Width") +
+  ggtitle("Faceting") +
+  theme_bw() +
+  facet_grid(Species~., scales = "free")
+
+```
+
+
+
+#### Can We See a Linear Trend?
+
+The loess looks fairly linear, lets see what that looks like if we want a linear model type analysis.
+
+```{r facets background smooth linear}
+#Faceting
+ggplot(data=df, aes(Sepal.Length, y=Sepal.Width,
+                             color=Species)) +
+  geom_point(aes(shape=Species), size=1.5) +
+  geom_smooth(method = "lm") +
+  xlab("Sepal Length") +
+  ylab("Sepal Width") +
+  ggtitle("Faceting") +
+  theme_bw() +
+  facet_grid(Species~., scales = "free")
+
+```
+
+#### Can We Do Several Regressions at Once?
+
+If we want to see the results of several different regressions at once, we can use the **broom** package to look at a cleaned up version of a grouped regression that we perform using the **tidy** function.
+
+```{r grouped regression}
+library(broom)
+df %>%
+  group_by(Species) %>%
+  do(tidy( 
+    lm(Sepal.Length ~ Sepal.Width, data = .)))
+```
+
+We can see that the slopes of the lines are slightly different, but that there is a significant relationship between sepal length and width in all three species (indicated by the relatively low p value).
+
+
+## Final Notes
+
+Tidyverse is constantly changing, and it's not the end-all-be-all of programming in R. You can absolutely succeed without ever touching any Tidyverse packages, but I think that they're helpful (for now). If you ever run into trouble figuring out how to use Tidyverse things, they have created a series of cheat sheets (https://www.rstudio.com/resources/cheatsheets/) which are VERY useful, especially when you are first starting out. 
+
+Good luck and have fun!
+
+
+
+## Session Information
+
+In case you all need to know what versions of things I was using:
+
+```{r session info}
+sessionInfo()
+```
+
+
